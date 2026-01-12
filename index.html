@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧記憶本草測驗 (防當機版)</title>
+    <title>智慧記憶本草測驗 (錯題複習版)</title>
     <style>
         body { font-family: "Microsoft JhengHei", Arial, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: center; margin: 0; }
         .container { background: white; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
         h2 { color: #2e7d32; margin-bottom: 5px; }
         .sub-title { color: #666; font-size: 0.9rem; margin-bottom: 15px; }
         
-        /* 弱點分析條 */
+        .strategy-bar { background: #fff3e0; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ffe0b2; font-size: 0.95rem; }
+        .strategy-bar label { margin: 0 10px; cursor: pointer; color: #e65100; font-weight: bold; display: inline-block; }
+        .strategy-bar input { margin-right: 5px; }
+        #pool-info { font-size: 0.85rem; color: #d84315; margin-top: 5px; font-weight: bold; min-height: 1.2em; }
+
         .memory-bar { display: flex; justify-content: space-around; background: #f1f8e9; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.8rem; color: #555; }
         .mem-item span { display: block; font-weight: bold; font-size: 1.1rem; color: #d32f2f; }
 
@@ -29,8 +32,8 @@
         .opt-btn.correct { background: #4caf50; color: white; border-color: #4caf50; }
         .opt-btn.wrong { background: #f44336; color: white; border-color: #f44336; }
         
-        .control-area { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
-        .ctrl-btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; }
+        .control-area { margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .ctrl-btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; margin: 5px; }
         #next-btn { background: #333; display: none; }
         #end-btn { background: #d32f2f; }
         #reset-mem-btn { background: #607d8b; font-size: 0.8rem; margin-top: 10px; padding: 5px 10px; color: white; border: none; border-radius: 5px; cursor: pointer; }
@@ -40,9 +43,12 @@
         .review-q { font-weight: bold; color: #333; margin-bottom: 5px; }
         .review-wrong { color: #d32f2f; font-size: 0.9rem; }
         .review-correct { color: #2e7d32; font-size: 0.9rem; font-weight: bold; }
-        #restart-btn { width: 100%; margin-top: 20px; background: #2e7d32; padding: 15px; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
         
-        /* 錯誤訊息提示 */
+        /* 按鈕區分 */
+        #restart-btn { width: 100%; margin-top: 10px; background: #2e7d32; padding: 15px; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+        #review-wrong-btn { width: 100%; margin-top: 20px; background: #ff9800; padding: 15px; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; display: none; box-shadow: 0 4px 0 #e65100; }
+        #review-wrong-btn:active { transform: translateY(4px); box-shadow: none; }
+
         #error-msg { color: red; font-size: 0.8rem; display: none; margin-top: 5px; }
     </style>
 </head>
@@ -51,6 +57,13 @@
 <div class="container" id="quiz-container">
     <h2>🧠 智慧記憶本草測驗</h2>
     <div class="sub-title">得分: <span id="score">0</span> | 題數: <span id="count">0</span></div>
+
+    <div class="strategy-bar">
+        出題模式：<br>
+        <label><input type="radio" name="strategy" value="once" checked onchange="handleStrategyChange()"> 🏁 地毯式全跑</label>
+        <label><input type="radio" name="strategy" value="repeat" onchange="handleStrategyChange()"> 🔁 隨機無限複習</label>
+        <div id="pool-info"></div>
+    </div>
 
     <div class="memory-bar">
         <div class="mem-item">科名權重<span id="w-family">1</span></div>
@@ -86,10 +99,14 @@
 <div class="container" id="review-section">
     <h2>📊 測驗結算</h2>
     <p>本次得分：<span id="final-score" style="font-weight:bold; color:#2e7d32; font-size:1.5rem;"></span></p>
+    
+    <button id="review-wrong-btn" onclick="startReviewWrong()">🎯 立即複習本輪錯題</button>
+    
     <hr>
-    <h3>❌ 本輪錯題：</h3>
+    <h3>❌ 本輪錯題紀錄：</h3>
     <div id="wrong-list"></div>
-    <button id="restart-btn" onclick="restartQuiz()">🔄 重新開始</button>
+    
+    <button id="restart-btn" onclick="restartQuiz()">🔄 重新開始完整測驗</button>
 </div>
 
 <script>
@@ -129,27 +146,22 @@
     let wrongLog = [];
     let currentQData = {};
     let weights = { family: 1, drug: 1, sci: 1, note: 1 };
+    let questionPool = []; 
+    let currentDbIndex = 0; // 追蹤目前題目在 db 的 index
+    let sessionWrongIndices = []; // 紀錄本輪答錯的 db index
 
-    // --- 安全的讀取記憶功能 ---
     function initWeights() {
         try {
             let saved = localStorage.getItem('quizWeights');
-            if (saved) {
-                weights = JSON.parse(saved);
-            }
+            if (saved) weights = JSON.parse(saved);
         } catch (e) {
-            console.log("無法讀取 LocalStorage (可能是線上預覽模式)");
             document.getElementById('error-msg').style.display = 'block';
         }
         updateWeightDisplay();
     }
 
     function saveWeights() {
-        try {
-            localStorage.setItem('quizWeights', JSON.stringify(weights));
-        } catch (e) {
-            // 線上預覽無法儲存是正常的，忽略錯誤即可
-        }
+        try { localStorage.setItem('quizWeights', JSON.stringify(weights)); } catch (e) {}
         updateWeightDisplay();
     }
 
@@ -161,24 +173,55 @@
     }
 
     function resetMemory() {
-        if(confirm("確定要清除所有學習記憶嗎？所有出題機率將恢復變回平均。")) {
+        if(confirm("確定要清除所有學習記憶嗎？")) {
             weights = { family: 1, drug: 1, sci: 1, note: 1 };
             saveWeights();
             alert("記憶已清除！");
         }
     }
 
+    function fillPool() {
+        questionPool = [];
+        for(let i=0; i<db.length; i++) questionPool.push(i);
+    }
+
+    function updatePoolInfo() {
+        const strategy = document.querySelector('input[name="strategy"]:checked').value;
+        const info = document.getElementById('pool-info');
+        if (strategy === 'once') {
+            if (questionPool.length === 0 && count === 0) fillPool(); 
+            info.innerText = `剩餘題目：${questionPool.length}`;
+        } else {
+            info.innerText = "隨機抽取模式";
+        }
+    }
+
+    function handleStrategyChange() {
+        resetQuizState();
+    }
+
     function setMode(mode, btn) {
         currentMode = mode;
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        resetQuizState();
+    }
+
+    function resetQuizState() {
+        score = 0; 
+        count = 0; 
+        wrongLog = [];
+        sessionWrongIndices = []; // 重置錯題紀錄
+        document.getElementById('score').innerText = 0;
+        document.getElementById('count').innerText = 0;
+        fillPool();
+        updatePoolInfo();
         nextQuestion();
     }
 
     function getWeightedType() {
         let totalWeight = weights.family + weights.drug + weights.sci + weights.note;
         let randomNum = Math.random() * totalWeight;
-        
         if (randomNum < weights.family) return 'family';
         randomNum -= weights.family;
         if (randomNum < weights.drug) return 'drug';
@@ -191,12 +234,27 @@
         canAnswer = true;
         document.getElementById('next-btn').style.display = 'none';
         
-        const item = db[Math.floor(Math.random() * db.length)];
-        let type = currentMode;
-
-        if (type === 'mix') {
-            type = getWeightedType();
+        const strategy = document.querySelector('input[name="strategy"]:checked').value;
+        
+        if (strategy === 'once') {
+            if (questionPool.length === 0) {
+                // 如果是錯題複習模式跑完了
+                alert("恭喜！本輪題目（或錯題複習）已全部完成！");
+                endQuiz(); // 直接結束
+                return;
+            }
+            let randPoolIdx = Math.floor(Math.random() * questionPool.length);
+            currentDbIndex = questionPool[randPoolIdx];
+            questionPool.splice(randPoolIdx, 1);
+            updatePoolInfo();
+        } else {
+            currentDbIndex = Math.floor(Math.random() * db.length);
+            updatePoolInfo();
         }
+
+        const item = db[currentDbIndex];
+        let type = currentMode;
+        if (type === 'mix') type = getWeightedType();
 
         let qText = "", tagText = "";
         let correctAns = item[type];
@@ -210,7 +268,6 @@
         }
 
         currentQData = { question: qText, correct: correctAns, type: type };
-        
         document.getElementById('q-tag').innerText = tagText;
         document.getElementById('question').innerText = qText;
 
@@ -248,9 +305,13 @@
             btn.classList.add('wrong');
             allBtns.forEach(b => { if(b.innerText === correctAns) b.classList.add('correct'); });
             
+            // 紀錄錯誤
             wrongLog.push({ q: currentQData.question, wrong: myAns, right: correctAns });
-            
-            // 增加權重並嘗試儲存
+            // 紀錄該題的 DB Index，供複習使用
+            if (!sessionWrongIndices.includes(currentDbIndex)) {
+                sessionWrongIndices.push(currentDbIndex);
+            }
+
             weights[currentQData.type] += 1;
             saveWeights();
         }
@@ -265,6 +326,15 @@
         document.getElementById('review-section').style.display = 'block';
         document.getElementById('final-score').innerText = `${score} / ${count}`;
         
+        // 顯示錯題複習按鈕邏輯
+        const reviewBtn = document.getElementById('review-wrong-btn');
+        if (sessionWrongIndices.length > 0) {
+            reviewBtn.style.display = 'block';
+            reviewBtn.innerText = `🎯 立即複習本輪錯題 (${sessionWrongIndices.length} 題)`;
+        } else {
+            reviewBtn.style.display = 'none';
+        }
+
         const list = document.getElementById('wrong-list');
         list.innerHTML = "";
         if(wrongLog.length === 0) {
@@ -279,17 +349,42 @@
         }
     }
 
-    function restartQuiz() {
-        score = 0; count = 0; wrongLog = [];
+    // 啟動錯題複習模式
+    function startReviewWrong() {
+        if (sessionWrongIndices.length === 0) return;
+
+        // 1. 強制切換到「地毯模式」(once)
+        const radios = document.getElementsByName('strategy');
+        radios.forEach(r => { if(r.value === 'once') r.checked = true; });
+
+        // 2. 將題目池 (questionPool) 替換為錯題 ID
+        questionPool = [...sessionWrongIndices];
+        
+        // 3. 重置分數與狀態，但不重置 sessionWrongIndices (避免複習到一半按結算又消失)
+        score = 0;
+        count = 0;
+        wrongLog = [];
+        
         document.getElementById('score').innerText = 0;
         document.getElementById('count').innerText = 0;
-        document.getElementById('quiz-container').style.display = 'block';
+        document.getElementById('pool-info').innerText = `🔥 錯題特訓模式：剩餘 ${questionPool.length} 題`;
+
+        // 4. 切換畫面
         document.getElementById('review-section').style.display = 'none';
+        document.getElementById('quiz-container').style.display = 'block';
+
         nextQuestion();
     }
 
-    // 啟動程式 (嘗試讀取記憶)
+    function restartQuiz() {
+        document.getElementById('quiz-container').style.display = 'block';
+        document.getElementById('review-section').style.display = 'none';
+        resetQuizState();
+    }
+
     initWeights();
+    fillPool();
+    updatePoolInfo();
     nextQuestion();
 </script>
 </body>
