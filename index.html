@@ -112,32 +112,32 @@
 <script>
     const db = [
         {name:"知母", family:"Liliaceae", drug:"Anemarrhenae Rhizoma", sci:"Anemarrhena asphodeloides", note:"含 saponin (皂素)"},
-        {name:"甘草", family:"Fabaceae/Leguminosae", drug:"Glycyrrhizae Radix", sci:"Glycyrrhiza uralensis", note:"國老、含 Glycyrrhizin"},
-        {name:"黃連", family:"Ranunculaceae", drug:"Coptidis Rhizoma", sci:"Coptis chinensis", note:"無 saponin、根如連珠"},
+        {name:"甘草", family:"Fabaceae/Leguminosae", drug:"Glycyrrhizae Radix", sci:"Glycyrrhiza uralensis", note:"國老、含 Glycyrrhizin-月亮臉"},
+        {name:"黃連", family:"Ranunculaceae", drug:"Coptidis Rhizoma", sci:"Coptis chinensis", note:"berberine、無 saponin、根如連珠"},
         {name:"川芎", family:"Apiaceae/Umbelliferae", drug:"Chuanxiong Rhizoma", sci:"Ligusticum chuanxiong", note:"無 Saponin"},
-        {name:"何首烏", family:"Polygonaceae", drug:"Polygoni Multiflori Radix", sci:"Polygonum multiflorum", note:"雲錦花紋、馬肝石"},
+        {name:"何首烏", family:"Polygonaceae", drug:"Polygoni Multiflori Radix", sci:"Polygonum multiflorum", note:"雲錦花紋為異常維管束、馬肝石、有瀉下、強壯、緩下作用、化學結構-抗氧化劑(間)"},
         {name:"地黃", family:"Scrophulariaceae", drug:"Rehmanniae Radix", sci:"Rehmannia glutinosa", note:"懷慶地黃"},
         {name:"細辛", family:"Aristolochiaceae", drug:"Asiasari Radix", sci:"Asarum sieboldii", note:"單用不可過半錢匕"},
         {name:"白頭翁", family:"Ranunculaceae", drug:"Pulsatillae Radix", sci:"Pulsatilla chinensis", note:"含 saponin"},
-        {name:"土茯苓", family:"Liliaceae", drug:"Smilacis Glabrae Rhizoma", sci:"Smilax glabra", note:"含 saponin、diosgenin"},
-        {name:"茯苓", family:"Polyporaceae", drug:"Poria", sci:"茯苓菌 Pachyma hoelen/茯苓Poria cocos", note:"菌核、久服安魂"},
+        {name:"土茯苓", family:"Liliaceae", drug:"Smilacis Glabrae Rhizoma", sci:"Smilax glabra", note:"刺豬苓、含 saponin、diosgenin"},
+        {name:"茯苓", family:"Polyporaceae", drug:"Poria", sci:"茯苓菌 Pachyma hoelen/茯苓Poria cocos", note:"菌核、久服安魂、養神、千年之松"},
         {name:"馬勃", family:"Lycoperdaceae", drug:"puffballs", sci:"Calvatia gigantea", note:"馬屁包"},
         {name:"牛黃", family:"Bovidae", drug:"Bezoar Bovis", sci:"Bos taurus", note:"牛膽囊中的結石"},
         {name:"金銀花", family:"Caprifoliaceae", drug:"Lonicerae Flos", sci:"Lonicera japonica", note:"忍冬-凌冬不凋"},
         {name:"洋金花", family:"Solanaceae", drug:"Daturae Flos", sci:"白花南Datura metel/毛北Datura innoxia Mill", note:"麻沸散、Tropane alkaloids"},
         {name:"益母草", family:"Lamiaceae/Labiatae", drug:"Leonuri Herba", sci:"Leonurus heterophyllus", note:"充蔚(果實)"},
         {name:"魚腥草", family:"Saururaceae", drug:"Houttuyniae Herba", sci:"Houttuynia cordata", note:"蕺菜"},
-        {name:"麻黃", family:"Ephedraceae", drug:"Ephedrae Herba", sci:"木賊麻黃Ephedra equisetina/草(川)麻黃Ephedra sinica", note:"含 Ephedrine(支氣管擴張)、裸子植物"},
+        {name:"麻黃", family:"Ephedraceae", drug:"Ephedrae Herba", sci:"木賊麻黃Ephedra equisetina/草(川)麻黃Ephedra sinica", note:"發汗解熱、含 Ephedrine(支氣管擴張)、裸子植物"},
         {name:"八角茴香", family:"Magnoliaceae", drug:"Anisi Stellati Fructus", sci:"Illicium verum", note:"含 Anethole、揮發油"},
         {name:"決明子", family:"Fabaceae/Leguminosae", drug:"Cassiae Semen", sci:"決明Cassia obtusifolia/小決明Cassia tora ", note:"子形似馬蹄、有瀉下功用"},
         {name:"車前草", family:"Plantaginaceae", drug:"Plantaginis Herba", sci:"Plantago asiatica", note:"地衣"},
         {name:"胡椒", family:"Piperaceae", drug:"Piperis Nigri Fructus", sci:"Piper nigrum", note:"胡椒果"},
         {name:"蛇床子", family:"Apiaceae/Umbelliferae", drug:"Cnidii Fructus", sci:"Cnidium monnieri", note:"治陽痿、宮冷不孕、連陽八座"},
-        {name:"檳榔子", family:"Arecaceae/Palmae", drug:"Arecae Semen", sci:"Areca catechu", note:"含 Arecoline (檳榔鹼)"},
+        {name:"檳榔子", family:"Arecaceae/Palmae", drug:"Arecae Semen", sci:"Areca catechu", note:"含 Arecoline (檳榔鹼)、花檳榔-錯入組織"},
         {name:"杜仲", family:"Eucommiaceae", drug:"Eucommiae Cortex", sci:"Eucommia ulmoides", note:"沒有瀉下、折斷有絲、一科一屬、雌雄異株、樹皮強壯藥"},
-        {name:"厚朴", family:"Magnoliaceae", drug:"Magnoliae Cortex", sci:"厚朴Magnolia officinalis/凹葉厚朴Magnolia biloba", note:"藥用莖皮"},
-        {name:"肉桂", family:"Lauraceae", drug:"Cinnamomi Cortex", sci:"Cinnamomum cassia", note:"含 Cinnamaldehyde"},
-        {name:"黃柏", family:"Rutaceae", drug:"Phellodendri Cortex", sci:"關黃柏Phellodendron amurense/川黃柏Phellodendron chinense", note:"含 Berberine、苦味健胃、跌打損傷藥"}
+        {name:"厚朴", family:"Magnoliaceae", drug:"Magnoliae Cortex", sci:"厚朴Magnolia officinalis/凹葉厚朴Magnolia biloba", note:"藥用部分是莖皮(乾燥樹皮)、烈赤、lignans and alkaloid"},
+        {name:"桂皮", family:"Lauraceae", drug:"Cinnamomi Cortex", sci:"Cinnamomum cassia", note:"肉桂、含 Cinnamaldehyde"},
+        {name:"黃柏", family:"Rutaceae", drug:"Phellodendri Cortex", sci:"關黃柏Phellodendron amurense/川黃柏Phellodendron chinense", note:"含 Berberine、苦味健胃、跌打損傷藥、蘗木(本經)、黃蘗(本草經集著"}
     ];
 
     let currentMode = 'mix';
