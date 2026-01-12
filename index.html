@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧記憶本草測驗 (防當機版)</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: center; margin: 0; }
+        .container { background: white; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        h2 { color: #2e7d32; margin-bottom: 5px; }
+        .sub-title { color: #666; font-size: 0.9rem; margin-bottom: 15px; }
+        
+        /* 弱點分析條 */
+        .memory-bar { display: flex; justify-content: space-around; background: #f1f8e9; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.8rem; color: #555; }
+        .mem-item span { display: block; font-weight: bold; font-size: 1.1rem; color: #d32f2f; }
+
+        .mode-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #ccc; }
+        .mode-btn { background: #e0e0e0; color: #333; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: 0.3s; }
+        .mode-btn.active { background: #2e7d32; color: white; font-weight: bold; }
+
+        .question-box { background: #e8f5e9; padding: 20px; border-radius: 10px; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px; }
+        .q-tag { background: #2e7d32; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 5px; display: inline-block; }
+        .q-text { font-size: 1.2rem; font-weight: bold; color: #1b5e20; line-height: 1.4; }
+        
+        .options { display: grid; gap: 10px; }
+        .opt-btn { background: white; border: 2px solid #2e7d32; color: #2e7d32; padding: 12px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: 0.2s; }
+        .opt-btn:hover { background: #e8f5e9; }
+        .opt-btn.correct { background: #4caf50; color: white; border-color: #4caf50; }
+        .opt-btn.wrong { background: #f44336; color: white; border-color: #f44336; }
+        
+        .control-area { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .ctrl-btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; }
+        #next-btn { background: #333; display: none; }
+        #end-btn { background: #d32f2f; }
+        #reset-mem-btn { background: #607d8b; font-size: 0.8rem; margin-top: 10px; padding: 5px 10px; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+        #review-section { display: none; text-align: left; }
+        .review-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+        .review-q { font-weight: bold; color: #333; margin-bottom: 5px; }
+        .review-wrong { color: #d32f2f; font-size: 0.9rem; }
+        .review-correct { color: #2e7d32; font-size: 0.9rem; font-weight: bold; }
+        #restart-btn { width: 100%; margin-top: 20px; background: #2e7d32; padding: 15px; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+        
+        /* 錯誤訊息提示 */
+        #error-msg { color: red; font-size: 0.8rem; display: none; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="quiz-container">
+    <h2>🧠 智慧記憶本草測驗</h2>
+    <div class="sub-title">得分: <span id="score">0</span> | 題數: <span id="count">0</span></div>
+
+    <div class="memory-bar">
+        <div class="mem-item">科名權重<span id="w-family">1</span></div>
+        <div class="mem-item">生藥權重<span id="w-drug">1</span></div>
+        <div class="mem-item">學名權重<span id="w-sci">1</span></div>
+        <div class="mem-item">備註權重<span id="w-note">1</span></div>
+    </div>
+    <div id="error-msg">⚠️ 無法存取記憶（線上預覽模式），本次紀錄不會保存。</div>
+
+    <div class="mode-bar">
+        <button class="mode-btn active" onclick="setMode('mix', this)">🔀 智慧綜合</button>
+        <button class="mode-btn" onclick="setMode('family', this)">🌱 科名</button>
+        <button class="mode-btn" onclick="setMode('drug', this)">💊 生藥名</button>
+        <button class="mode-btn" onclick="setMode('sci', this)">🔬 學名</button>
+        <button class="mode-btn" onclick="setMode('note', this)">📝 備註</button>
+    </div>
+
+    <div class="question-box">
+        <div class="q-tag" id="q-tag">載入中</div>
+        <div class="q-text" id="question">準備開始...</div>
+    </div>
+
+    <div class="options" id="options-area"></div>
+    
+    <div class="control-area">
+        <button class="ctrl-btn" id="next-btn" onclick="nextQuestion()">下一題 ▶</button>
+        <button class="ctrl-btn" id="end-btn" onclick="endQuiz()">📊 結算</button>
+    </div>
+    
+    <button id="reset-mem-btn" onclick="resetMemory()">♻️ 清除記憶 (重置出題機率)</button>
+</div>
+
+<div class="container" id="review-section">
+    <h2>📊 測驗結算</h2>
+    <p>本次得分：<span id="final-score" style="font-weight:bold; color:#2e7d32; font-size:1.5rem;"></span></p>
+    <hr>
+    <h3>❌ 本輪錯題：</h3>
+    <div id="wrong-list"></div>
+    <button id="restart-btn" onclick="restartQuiz()">🔄 重新開始</button>
+</div>
+
+<script>
+    const db = [
+        {name:"知母", family:"Liliaceae", drug:"Anemarrhenae Rhizoma", sci:"Anemarrhena asphodeloides", note:"含 saponin (皂素)"},
+        {name:"甘草", family:"Fabaceae", drug:"Glycyrrhizae Radix", sci:"Glycyrrhiza uralensis", note:"國老、含 Glycyrrhizin"},
+        {name:"黃連", family:"Ranunculaceae", drug:"Coptidis Rhizoma", sci:"Coptis chinensis", note:"無 saponin、根如連珠"},
+        {name:"川芎", family:"Apiaceae", drug:"Chuanxiong Rhizoma", sci:"Ligusticum chuanxiong", note:"無 Saponin"},
+        {name:"何首烏", family:"Polygonaceae", drug:"Polygoni Multiflori Radix", sci:"Polygonum multiflorum", note:"雲錦花紋、馬肝石"},
+        {name:"地黃", family:"Scrophulariaceae", drug:"Rehmanniae Radix", sci:"Rehmannia glutinosa", note:"懷慶地黃"},
+        {name:"細辛", family:"Aristolochiaceae", drug:"Asiasari Radix", sci:"Asarum sieboldii", note:"單用不可過半錢"},
+        {name:"白頭翁", family:"Ranunculaceae", drug:"Pulsatillae Radix", sci:"Pulsatilla chinensis", note:"含 saponin"},
+        {name:"土茯苓", family:"Liliaceae", drug:"Smilacis Glabrae Rhizoma", sci:"Smilax glabra", note:"含 saponin、diosgenin"},
+        {name:"茯苓", family:"Polyporaceae", drug:"Poria", sci:"Poria cocos", note:"菌核、久服安魂"},
+        {name:"馬勃", family:"Lycoperdaceae", drug:"Lasiosphaera", sci:"Calvatia gigantea", note:"馬屁包"},
+        {name:"牛黃", family:"Bovidae", drug:"Bezoar Bovis", sci:"Bos taurus", note:"牛膽囊中的結石"},
+        {name:"金銀花", family:"忍冬科 (Caprifoliaceae)", drug:"Lonicerae Flos", sci:"Lonicera japonica", note:"忍冬-凌冬不凋"},
+        {name:"洋金花", family:"Solanaceae", drug:"Daturae Flos", sci:"Datura metel", note:"麻沸散、Tropane alkaloids"},
+        {name:"益母草", family:"Lamiaceae", drug:"Leonuri Herba", sci:"Leonurus heterophyllus", note:"充蔚(果實)"},
+        {name:"魚腥草", family:"Saururaceae", drug:"Houttuyniae Herba", sci:"Houttuynia cordata", note:"蕺菜"},
+        {name:"麻黃", family:"Ephedraceae", drug:"Ephedrae Herba", sci:"Ephedra sinica", note:"含 Ephedrine(支氣管擴張)、裸子植物"},
+        {name:"八角茴香", family:"Magnoliaceae", drug:"Anisi Stellati Fructus", sci:"Illicium verum", note:"含 Anethole、揮發油"},
+        {name:"決明子", family:"Fabaceae", drug:"Cassiae Semen", sci:"Cassia obtusifolia", note:"子形似馬蹄"},
+        {name:"車前草", family:"Plantaginaceae", drug:"Plantaginis Herba", sci:"Plantago asiatica", note:"有瀉下功用"},
+        {name:"胡椒", family:"Piperaceae", drug:"Piperis Nigri Fructus", sci:"Piper nigrum", note:"胡椒果"},
+        {name:"蛇床子", family:"Apiaceae", drug:"Cnidii Fructus", sci:"Cnidium monnieri", note:"治陽痿、宮冷不孕、連陽八座"},
+        {name:"檳榔子", family:"(Arecaceae", drug:"Arecae Semen", sci:"Areca catechu", note:"含 Arecoline (檳榔鹼)"},
+        {name:"杜仲", family:"Eucommiaceae", drug:"Eucommiae Cortex", sci:"Eucommia ulmoides", note:"沒有瀉下、折斷有絲、一科一屬、雌雄異株、樹皮強壯藥"},
+        {name:"厚朴", family:"Magnoliaceae", drug:"Magnoliae Cortex", sci:"Magnolia officinalis", note:"藥用莖皮"},
+        {name:"肉桂", family:"Lauraceae", drug:"Cinnamomi Cortex", sci:"Cinnamomum cassia", note:"含 Cinnamaldehyde"},
+        {name:"黃柏", family:"Rutaceae", drug:"Phellodendri Cortex", sci:"Phellodendron amurense", note:"含 Berberine、苦味健胃、跌打損傷藥"}
+    ];
+
+    let currentMode = 'mix';
+    let score = 0, count = 0;
+    let canAnswer = true;
+    let wrongLog = [];
+    let currentQData = {};
+    let weights = { family: 1, drug: 1, sci: 1, note: 1 };
+
+    // --- 安全的讀取記憶功能 ---
+    function initWeights() {
+        try {
+            let saved = localStorage.getItem('quizWeights');
+            if (saved) {
+                weights = JSON.parse(saved);
+            }
+        } catch (e) {
+            console.log("無法讀取 LocalStorage (可能是線上預覽模式)");
+            document.getElementById('error-msg').style.display = 'block';
+        }
+        updateWeightDisplay();
+    }
+
+    function saveWeights() {
+        try {
+            localStorage.setItem('quizWeights', JSON.stringify(weights));
+        } catch (e) {
+            // 線上預覽無法儲存是正常的，忽略錯誤即可
+        }
+        updateWeightDisplay();
+    }
+
+    function updateWeightDisplay() {
+        document.getElementById('w-family').innerText = weights.family;
+        document.getElementById('w-drug').innerText = weights.drug;
+        document.getElementById('w-sci').innerText = weights.sci;
+        document.getElementById('w-note').innerText = weights.note;
+    }
+
+    function resetMemory() {
+        if(confirm("確定要清除所有學習記憶嗎？所有出題機率將恢復變回平均。")) {
+            weights = { family: 1, drug: 1, sci: 1, note: 1 };
+            saveWeights();
+            alert("記憶已清除！");
+        }
+    }
+
+    function setMode(mode, btn) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        nextQuestion();
+    }
+
+    function getWeightedType() {
+        let totalWeight = weights.family + weights.drug + weights.sci + weights.note;
+        let randomNum = Math.random() * totalWeight;
+        
+        if (randomNum < weights.family) return 'family';
+        randomNum -= weights.family;
+        if (randomNum < weights.drug) return 'drug';
+        randomNum -= weights.drug;
+        if (randomNum < weights.sci) return 'sci';
+        return 'note';
+    }
+
+    function nextQuestion() {
+        canAnswer = true;
+        document.getElementById('next-btn').style.display = 'none';
+        
+        const item = db[Math.floor(Math.random() * db.length)];
+        let type = currentMode;
+
+        if (type === 'mix') {
+            type = getWeightedType();
+        }
+
+        let qText = "", tagText = "";
+        let correctAns = item[type];
+        if (!correctAns) { type = 'family'; correctAns = item.family; }
+
+        switch(type) {
+            case 'family': qText = `【${item.name}】 屬於哪一科？`; tagText = "🌱 考科名"; break;
+            case 'drug':   qText = `【${item.name}】 的生藥名 (Latin) 是？`; tagText = "💊 考生藥名"; break;
+            case 'sci':    qText = `【${item.name}】 的學名 (Scientific) 是？`; tagText = "🔬 考學名"; break;
+            case 'note':   qText = `關於【${item.name}】 的特徵/備註，何者正確？`; tagText = "📝 考特徵"; break;
+        }
+
+        currentQData = { question: qText, correct: correctAns, type: type };
+        
+        document.getElementById('q-tag').innerText = tagText;
+        document.getElementById('question').innerText = qText;
+
+        let options = [correctAns];
+        let safetyLoop = 0;
+        while(options.length < 4 && safetyLoop < 50) {
+            let randomItem = db[Math.floor(Math.random() * db.length)];
+            let otherAns = randomItem[type];
+            if(otherAns && !options.includes(otherAns)) options.push(otherAns);
+            safetyLoop++;
+        }
+        options.sort(() => Math.random() - 0.5);
+
+        const area = document.getElementById('options-area');
+        area.innerHTML = "";
+        options.forEach(opt => {
+            let btn = document.createElement("button");
+            btn.className = "opt-btn";
+            btn.innerText = opt;
+            btn.onclick = function() { checkAnswer(this, opt, correctAns); };
+            area.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(btn, myAns, correctAns) {
+        if(!canAnswer) return;
+        canAnswer = false;
+        count++;
+        
+        const allBtns = document.querySelectorAll('.opt-btn');
+        if (myAns === correctAns) {
+            btn.classList.add('correct');
+            score++;
+        } else {
+            btn.classList.add('wrong');
+            allBtns.forEach(b => { if(b.innerText === correctAns) b.classList.add('correct'); });
+            
+            wrongLog.push({ q: currentQData.question, wrong: myAns, right: correctAns });
+            
+            // 增加權重並嘗試儲存
+            weights[currentQData.type] += 1;
+            saveWeights();
+        }
+        
+        document.getElementById('score').innerText = score;
+        document.getElementById('count').innerText = count;
+        document.getElementById('next-btn').style.display = 'inline-block';
+    }
+
+    function endQuiz() {
+        document.getElementById('quiz-container').style.display = 'none';
+        document.getElementById('review-section').style.display = 'block';
+        document.getElementById('final-score').innerText = `${score} / ${count}`;
+        
+        const list = document.getElementById('wrong-list');
+        list.innerHTML = "";
+        if(wrongLog.length === 0) {
+            list.innerHTML = "<p style='text-align:center; color:#2e7d32;'>🎉 太強了！這輪全對！</p>";
+        } else {
+            wrongLog.forEach((item, index) => {
+                let div = document.createElement('div');
+                div.className = 'review-item';
+                div.innerHTML = `<div class="review-q">${index+1}. ${item.q}</div><div class="review-wrong">❌ 你的回答：${item.wrong}</div><div class="review-correct">✅ 正確答案：${item.right}</div>`;
+                list.appendChild(div);
+            });
+        }
+    }
+
+    function restartQuiz() {
+        score = 0; count = 0; wrongLog = [];
+        document.getElementById('score').innerText = 0;
+        document.getElementById('count').innerText = 0;
+        document.getElementById('quiz-container').style.display = 'block';
+        document.getElementById('review-section').style.display = 'none';
+        nextQuestion();
+    }
+
+    // 啟動程式 (嘗試讀取記憶)
+    initWeights();
+    nextQuestion();
+</script>
+</body>
+</html>
