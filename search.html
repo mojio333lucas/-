@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧藥材搜尋</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f4f7f6; padding: 20px; max-width: 800px; margin: 0 auto; min-height: 100vh; }
+        .nav { margin-bottom: 20px; }
+        .nav a { text-decoration: none; color: #2c5e40; font-weight: bold; font-size: 1.1rem; }
+        
+        h1 { color: #2c5e40; text-align: center; margin-bottom: 30px; }
+
+        /* 搜尋框容器 (為了定位下拉選單) */
+        .search-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto 30px auto; }
+        
+        .search-box { 
+            width: 100%; 
+            padding: 15px 20px; 
+            font-size: 1.2rem; 
+            border: 2px solid #ddd; 
+            border-radius: 30px; 
+            box-sizing: border-box; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .search-box:focus { border-color: #2c5e40; }
+
+        /* 自動完成建議列表 (Google 風格) */
+        .suggestions-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 15px 15px;
+            z-index: 99;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+            display: none; /* 預設隱藏 */
+        }
+
+        .suggestion-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: #f1f8e9; }
+        
+        .s-main { font-weight: bold; font-size: 1.1rem; color: #333; }
+        .s-sub { font-size: 0.85rem; color: #888; }
+
+        /* 結果卡片樣式 */
+        .result-card { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-bottom: 15px; 
+            border-left: 6px solid #2c5e40; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+            animation: fadeIn 0.3s ease;
+        }
+        .r-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .r-name { font-size: 1.8rem; font-weight: bold; color: #2c5e40; }
+        .r-family { color: #666; font-style: italic; }
+        
+        .r-detail-row { margin-bottom: 8px; font-size: 1.05rem; line-height: 1.6; }
+        .label { font-weight: bold; color: #555; display: inline-block; width: 80px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="index.html">⬅ 回首頁</a>
+</div>
+
+<h1>🔍 藥材資料庫</h1>
+
+<div class="search-container">
+    <input type="text" id="searchInput" class="search-box" placeholder="輸入藥名、科名(En/Ch)或成分..." autocomplete="off">
+    <div id="suggestions" class="suggestions-list"></div>
+</div>
+
+<div id="results-area"></div>
+
+<script>
+    // --- 資料庫 (請保持與 quiz.html 一致) ---
+    // 為了讓搜尋更強大，建議在 family 欄位同時寫上 中文+英文
+    // 例如: "Liliaceae (百合科)"
+    const db = [
+        {name:"知母", family:"Liliaceae (百合科)", drug:"Anemarrhenae Rhizoma", sci:"Anemarrhena asphodeloides", note:"含 saponin (皂素)"},
+        {name:"甘草", family:"Fabaceae (豆科)", drug:"Glycyrrhizae Radix", sci:"Glycyrrhiza uralensis", note:"國老、含 Glycyrrhizin"},
+        {name:"黃連", family:"Ranunculaceae (毛茛科)", drug:"Coptidis Rhizoma", sci:"Coptis chinensis", note:"無 saponin、根如連珠"},
+        {name:"川芎", family:"Apiaceae (繖形科)", drug:"Chuanxiong Rhizoma", sci:"Ligusticum chuanxiong", note:"無 Saponin"},
+        {name:"何首烏", family:"Polygonaceae (蓼科)", drug:"Polygoni Multiflori Radix", sci:"Polygonum multiflorum", note:"雲錦花紋、馬肝石"},
+        {name:"地黃", family:"Scrophulariaceae (玄參科)", drug:"Rehmanniae Radix", sci:"Rehmannia glutinosa", note:"懷慶地黃"},
+        {name:"細辛", family:"Aristolochiaceae (馬兜鈴科)", drug:"Asiasari Radix", sci:"Asarum sieboldii", note:"單用不可過半錢"},
+        {name:"白頭翁", family:"Ranunculaceae (毛茛科)", drug:"Pulsatillae Radix", sci:"Pulsatilla chinensis", note:"含 saponin"},
+        {name:"土茯苓", family:"Liliaceae (百合科)", drug:"Smilacis Glabrae Rhizoma", sci:"Smilax glabra", note:"含 saponin、diosgenin"},
+        {name:"茯苓", family:"Polyporaceae (多孔菌科)", drug:"Poria", sci:"Poria cocos", note:"菌核、久服安魂"},
+        {name:"馬勃", family:"Lycoperdaceae (馬勃科)", drug:"Lasiosphaera", sci:"Calvatia gigantea", note:"馬屁包"},
+        {name:"牛黃", family:"Bovidae (牛科)", drug:"Bezoar Bovis", sci:"Bos taurus", note:"牛膽囊中的結石"},
+        {name:"金銀花", family:"Caprifoliaceae (忍冬科)", drug:"Lonicerae Flos", sci:"Lonicera japonica", note:"忍冬-凌冬不凋"},
+        {name:"洋金花", family:"Solanaceae (茄科)", drug:"Daturae Flos", sci:"Datura metel", note:"麻沸散、Tropane alkaloids"},
+        {name:"益母草", family:"Lamiaceae (脣形科)", drug:"Leonuri Herba", sci:"Leonurus heterophyllus", note:"充蔚(果實)"},
+        {name:"魚腥草", family:"Saururaceae (三白草科)", drug:"Houttuyniae Herba", sci:"Houttuynia cordata", note:"蕺菜"},
+        {name:"麻黃", family:"Ephedraceae (麻黃科)", drug:"Ephedrae Herba", sci:"Ephedra sinica", note:"含 Ephedrine(支氣管擴張)、裸子植物"},
+        {name:"八角茴香", family:"Magnoliaceae (木蘭科)", drug:"Anisi Stellati Fructus", sci:"Illicium verum", note:"含 Anethole、揮發油"},
+        {name:"決明子", family:"Fabaceae (豆科)", drug:"Cassiae Semen", sci:"Cassia obtusifolia", note:"子形似馬蹄"},
+        {name:"車前草", family:"Plantaginaceae (車前科)", drug:"Plantaginis Herba", sci:"Plantago asiatica", note:"有瀉下功用"},
+        {name:"胡椒", family:"Piperaceae (胡椒科)", drug:"Piperis Nigri Fructus", sci:"Piper nigrum", note:"胡椒果"},
+        {name:"蛇床子", family:"Apiaceae (繖形科)", drug:"Cnidii Fructus", sci:"Cnidium monnieri", note:"治陽痿、宮冷不孕、連陽八座"},
+        {name:"檳榔子", family:"Arecaceae (棕櫚科)", drug:"Arecae Semen", sci:"Areca catechu", note:"含 Arecoline (檳榔鹼)"},
+        {name:"杜仲", family:"Eucommiaceae (杜仲科)", drug:"Eucommiae Cortex", sci:"Eucommia ulmoides", note:"沒有瀉下、折斷有絲、一科一屬、雌雄異株、樹皮強壯藥"},
+        {name:"厚朴", family:"Magnoliaceae (木蘭科)", drug:"Magnoliae Cortex", sci:"Magnolia officinalis", note:"藥用莖皮"},
+        {name:"肉桂", family:"Lauraceae (樟科)", drug:"Cinnamomi Cortex", sci:"Cinnamomum cassia", note:"含 Cinnamaldehyde"},
+        {name:"黃柏", family:"Rutaceae (芸香科)", drug:"Phellodendri Cortex", sci:"Phellodendron amurense", note:"含 Berberine、苦味健胃、跌打損傷藥"}
+    ];
+
+    const input = document.getElementById('searchInput');
+    const suggestionsBox = document.getElementById('suggestions');
+    const resultsArea = document.getElementById('results-area');
+
+    // 監聽輸入事件：產生建議詞
+    input.addEventListener('input', function() {
+        const val = this.value.toLowerCase().trim();
+        suggestionsBox.innerHTML = '';
+        
+        if (!val) {
+            suggestionsBox.style.display = 'none';
+            resultsArea.innerHTML = ''; // 清空結果
+            return;
+        }
+
+        // 過濾邏輯：只要任一欄位包含輸入字串就抓出來
+        const matches = db.filter(item => {
+            return item.name.includes(val) || 
+                   item.family.toLowerCase().includes(val) ||
+                   item.drug.toLowerCase().includes(val) ||
+                   item.sci.toLowerCase().includes(val) ||
+                   item.note.toLowerCase().includes(val);
+        });
+
+        if (matches.length > 0) {
+            suggestionsBox.style.display = 'block';
+            matches.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                // 建議詞顯示格式：藥名 (科名)
+                div.innerHTML = `<span class="s-main">${item.name}</span><span class="s-sub">${item.family}</span>`;
+                
+                // 點擊建議詞後的動作
+                div.onclick = function() {
+                    input.value = item.name; // 填入輸入框
+                    suggestionsBox.style.display = 'none'; // 隱藏建議
+                    displayResult(item); // 顯示詳細卡片
+                };
+                suggestionsBox.appendChild(div);
+            });
+        } else {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+
+    // 點擊頁面其他地方時，關閉建議選單
+    document.addEventListener('click', function(e) {
+        if (e.target !== input && e.target !== suggestionsBox) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+
+    // 支援按 Enter 搜尋 (顯示所有符合項目)
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const val = this.value.toLowerCase().trim();
+            suggestionsBox.style.display = 'none';
+            
+            const matches = db.filter(item => {
+                return item.name.includes(val) || 
+                       item.family.toLowerCase().includes(val) ||
+                       item.drug.toLowerCase().includes(val) ||
+                       item.sci.toLowerCase().includes(val) ||
+                       item.note.toLowerCase().includes(val);
+            });
+            
+            resultsArea.innerHTML = "";
+            if(matches.length === 0) {
+                resultsArea.innerHTML = "<p style='text-align:center; color:#666; margin-top:20px;'>找不到符合的藥材...</p>";
+            } else {
+                matches.forEach(item => displayResult(item, true)); // true 代表是附加模式
+            }
+        }
+    });
+
+    // 顯示詳細資料卡片
+    function displayResult(item, append = false) {
+        if (!append) resultsArea.innerHTML = ""; // 如果不是列表模式，先清空
+
+        const div = document.createElement("div");
+        div.className = "result-card";
+        div.innerHTML = `
+            <div class="r-header">
+                <span class="r-name">${item.name}</span>
+                <span class="r-family">${item.family}</span>
+            </div>
+            <div class="r-detail-row"><span class="label">生藥名:</span> ${item.drug}</div>
+            <div class="r-detail-row"><span class="label">學名:</span> ${item.sci}</div>
+            <div class="r-detail-row"><span class="label">備註:</span> ${item.note}</div>
+        `;
+        resultsArea.appendChild(div);
+    }
+</script>
+
+</body>
+</html>
